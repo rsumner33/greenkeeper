@@ -114,9 +114,13 @@ module.exports = async function (
       repo,
       title: enabled
         ? `Add Greenkeeper badge 🌴`
-        : (depsUpdated ? 'Update dependencies' : 'Add badge') +
+<<        : (depsUpdated ? 'Update dependencies' : 'Add badge') +
             ' to enable Greenkeeper 🌴',
-      body: prContent({
+>>>>>>>+HEAD
+===
+            : (depsUpdated ? 'Update dependencies' : 'Add badge') + ' to enable Greenkeeper 🌴',
+>>>>>>>-8be4bfc
+body: prContent({
         depsUpdated,
         ghRepo,
         newBranch: head,
@@ -126,27 +130,38 @@ module.exports = async function (
         installationId,
         success: combined.state === 'success',
         enabled,
-        accountTokenUrl,
+<<<<<<        accountTokenUrl,
         files,
         greenkeeperConfigInfo,
         closes
-      }),
+>>>>>>>+HEAD
+=
+              accountTokenUrl
+>>>>>>>-8be4bfc
+}),
       base,
       head
     }))
     statsd.increment('initial_pullrequests')
-    log.success('success')
+<<<<<<    log.success('success')
 
     if (config.label !== false) {
       await ghqueue.write(github => github.issues.addLabels({
-        owner,
+>>>>>>>+HEAD
+=
+
+    i
+    if (config.label !== false) {
+      await githubQueue(() => github.issues.addLabels({
+>>>>>>>-8be4bfc
+  owner,
         repo,
         number,
         labels: [config.label]
       }))
     }
   } catch (err) {
-    if (err.code !== 422) {
+<<<<<<    if (err.code !== 422) {
       log.error('Could not create initial pr')
       throw err
     }
@@ -154,13 +169,26 @@ module.exports = async function (
     // in case the pull request was already created
     // we just store that PRs info
     const pr = (await ghqueue.read(github => github.pullRequests.getAll({
-      owner,
+>>>>>>>+HEAD
+=
+    if    if (err.code !== 422) throw err
+
+    // in case the pull request was already created
+    // we just store that PRs info
+    const pr = (await github.pullRequests.getAll({
+>>>>>>>-8be4bfc
+owner,
       repo,
       base,
       head: `${owner}:${head}`
-    })))[0]
+<<<<<<    })))[0]
     log.warn('pr was already created', {pullRequestInfo: pr})
-    id = pr.id
+>>>>>>>+HEAD
+=
+    })    }))[0]
+
+>>>>>>>-8be4bfc
+ = pr.id
     number = pr.number
   }
 

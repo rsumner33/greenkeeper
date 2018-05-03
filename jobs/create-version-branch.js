@@ -110,8 +110,24 @@ module.exports = async function (
 
   const newBranch = `${config.branchPrefix}${dependency}-${version}`
   log.info('branch name created', {branchName: newBranch})
+installa  const installation = await installations.get(accountId)
+  const repository = await repositories.get(repositoryId)
 
-  function transform (pkg) {
+  const billing = await getActiveBilling(accountId)
+
+  if (repository.private && !billing) return
+
+  const [owner, repo] = repository.fullName.split('/')
+  const config = getConfig(repository)
+  if (_.includes(config.ignore, dependency)) return
+  const { token } = await getToken(installation.installation)
+  const github = GitHub()
+  github.authenticate({ type: 'token', token })
+  const { default_branch: base } = await github.repos.get({ owner, repo })
+
+  const newBranch = `${config.branchPrefix}${dependency}-${version}`
+>>>>>>>-8be4bfc
+sform (pkg) {
     try {
       var json = JSON.parse(pkg)
       var parsed = jsonInPlace(pkg)
@@ -120,7 +136,8 @@ module.exports = async function (
     }
 
     const oldPkgVersion = _.get(json, [type, dependency])
-    if (!oldPkgVersion) {
+<<<<<<< HEAD
+       if (!oldPkgVersion) {
       log.warn('exited: could not find old package version', {newVersion: version, packageJson: json})
       return
     }
@@ -129,45 +146,71 @@ module.exports = async function (
       log.warn('exited: would be a downgrade', {newVersion: version, oldVersion: oldPkgVersion})
       return
     }
+>>>>>>>+HEAD
+!oldPkgV    if (!oldPkgVersion) return
 
-    parsed.set([type, dependency], getRangedVersion(version, oldPkgVersion))
+    if (semver.ltr(version, oldPkgVersion)) return // no downgrades
+>>>>>>>-8be4bfc
+[type, dependency], getRangedVersion(version, oldPkgVersion))
     return parsed.toString()
   }
 
-  const openPR = _.get(
+<<<<<<< HEAD
+===>>>>>>>+HEAD
+satisfie  const satisfies = semver.satisfies(version, oldVersion)
+
+>>>>>>>-8be4bfc
+ _.get(
     await repositories.query('pr_open_by_dependency', {
       key: [repositoryId, dependency],
       include_docs: true
     }),
     'rows[0].doc'
   )
-  log.info('database: found open PR for this dependency', {openPR})
+<<<<<<< HEAD
+  l  log.info('database: found open PR for this dependency', {openPR})
 
   const commitMessageKey = !satisfies && type === 'dependencies'
     ? 'dependencyUpdate'
     : 'devDependencyUpdate'
   const commitMessageValues = { dependency, version }
   let commitMessage = getMessage(config.commitMessages, commitMessageKey, commitMessageValues)
-  if (!satisfies && openPR) {
+>>>>>>>+HEAD
+ commitM
+  const commitMessageScope = !satisfies && type === 'dependencies'
+    ? 'fix'
+    : 'chore'
+  let commitMessage = `${commitMessageScope}(package): update ${dependency} to version ${version}`
+
+>>>>>>>-8be4bfc
+ && openPR) {
     await upsert(repositories, openPR._id, {
       comments: [...(openPR.comments || []), version]
     })
 
-    commitMessage += getMessage(config.commitMessages, 'closes', {number: openPR.number})
+<<<<<<< HEAD
+       commitMessage += getMessage(config.commitMessages, 'closes', {number: openPR.number})
   }
   log.info('commit message created', {commitMessage})
 
   const sha = await createBranch({
     installationId,
-    owner,
-    repo,
+>>>>>>>+HEAD
+itMessag    commitMessage += `\n\nCloses #${openPR.number}`
+  }
+
+  const sha = await createBranch({
+    github,
+>>>>>>>-8be4bfc
+epo,
     branch: base,
     newBranch,
     path: 'package.json',
     transform,
     message: commitMessage
   })
-  if (sha) {
+<<<<<<< HEAD
+  i  if (sha) {
     log.success('github: branch created', {sha})
   }
 
@@ -175,8 +218,11 @@ module.exports = async function (
     log.error('github: no branch was created')
     return
   }
-
-  // TODO: previously we checked the default_branch's status
+>>>>>>>+HEAD
+sha) ret
+  if (!sha) return // no branch was created
+>>>>>>>-8be4bfc
+iously we checked the default_branch's status
   // this failed when users used [ci skip]
   // or the repo was freshly set up
   // the commit didn't have a status then
@@ -203,20 +249,27 @@ module.exports = async function (
 
   // nothing to do anymore
   // the next action will be triggered by the status event
-  if (satisfies) {
+<<<<<<< HEAD
+  i  if (satisfies) {
     log.info('dependency satisfies version range, no action required')
     return
   }
-
-  const diffBase = openPR
+>>>>>>>+HEAD
+tisfies)  if (satisfies) return
+>>>>>>>-8be4bfc
+e = openPR
     ? _.get(openPR, 'comments.length')
         ? _.last(openPR.comments)
         : openPR.version
     : oldVersionResolved
 
   const { dependencyLink, release, diffCommits } = await getInfos({
-    installationId,
-    dependency,
+<<<<<<< HEAD
+       installationId,
+>>>>>>>+HEAD
+ub,
+>>>>    github,
+>>>>>>>-8be4bfc
     version,
     diffBase,
     versions
@@ -224,7 +277,8 @@ module.exports = async function (
 
   const bodyDetails = _.compact(['\n', release, diffCommits]).join('\n')
 
-  const compareURL = generateGitHubCompareURL(env.GITHUB_URL, repository.fullName, base, newBranch)
+<<<<<<< HEAD
+  c  const compareURL = generateGitHubCompareURL(env.GITHUB_URL, repository.fullName, base, newBranch)
 
   if (openPR) {
     await ghqueue.write(github => github.issues.createComment({
@@ -236,41 +290,65 @@ module.exports = async function (
 
     statsd.increment('pullrequest_comments')
     log.info('github: commented on already open PR for that dependency')
-    return
-  }
+>>>>>>>+HEAD
+PR) {
+    if (openPR) {
+    await githubQueue(() => github.issues.createComment({
+      owner,
+      repo,
+      number: openPR.number,
+      body: `## Version **${version}** just got published. \n[Update to this version instead 🚀](${env.GITHUB_URL}/${owner}/${repo}/compare/${encodeURIComponent(newBranch)}?expand=1) ${bodyDetails}`
+    }))
 
-  const title = `Update ${dependency} to the latest version 🚀`
+    statsd.increment('pullrequest_comments')
 
-  const body = prContent({
+>>>>>>>-8be4bfc
+nst title = `Update ${dependency} to the latest version 🚀`
+
+<<<<<<< HEAD
+nt({
     dependencyLink,
     oldVersionResolved,
     version,
     dependency,
     type,
     release,
-    diffCommits
+    diffC    diffCommits
   })
 
   // verify pull requests commit
   await ghqueue.write(github => github.repos.createStatus({
-    sha,
-    owner,
-    repo,
+>>>>>>>+HEAD
+s,
+    p    diffCommits,
+    plan,
+    isPrivate: repository.private
+  })
+
+  // verify pull requests commit
+  await githubQueue(() => github.repos.createStatus({
+>>>>>>>-8be4bfc
+  repo,
     state: 'success',
     context: 'greenkeeper/verify',
     description: 'Greenkeeper verified pull request',
     target_url: 'https://greenkeeper.io/verify.html'
   }))
-  log.info('github: set greenkeeper/verify status')
+<<<<<<< HEAD
+  log.inf  log.info('github: set greenkeeper/verify status')
 
   const createdPr = await createPr({
     ghqueue,
-    title,
-    body,
-    base,
+>>>>>>>+HEAD
+edPr = a
+  const createdPr = await createPr({
+    github,
+>>>>>>>-8be4bfc
+   base,
     head: newBranch,
     owner,
-    repo,
+<<<<<<< HEAD
+    repo,    repo,
     log
   })
 
@@ -281,8 +359,14 @@ module.exports = async function (
     log.error('github: pull request was not created')
     return
   }
+>>>>>>>+HEAD
 
-  statsd.increment('update_pullrequests')
+  if (!    repo
+  })
+
+  if (!createdPr) return
+>>>>>>>-8be4bfc
+pdate_pullrequests')
 
   await upsert(repositories, `${repositoryId}:pr:${createdPr.id}`, {
     type: 'pr',
@@ -298,8 +382,12 @@ module.exports = async function (
   })
 
   if (config.label !== false) {
-    await ghqueue.write(github => github.issues.addLabels({
-      number: createdPr.number,
+<<<<<<< HEAD
+    await    await ghqueue.write(github => github.issues.addLabels({
+>>>>>>>+HEAD
+ubQueue(    await githubQueue(() => github.issues.addLabels({
+>>>>>>>-8be4bfc
+r.number,
       labels: [config.label],
       owner,
       repo
@@ -307,11 +395,16 @@ module.exports = async function (
   }
 }
 
-async function createPr ({ ghqueue, title, body, base, head, owner, repo, log }) {
+<<<<<<< HEAD
+async funasync function createPr ({ ghqueue, title, body, base, head, owner, repo, log }) {
   try {
     return await ghqueue.write(github => github.pullRequests.create({
-      title,
-      body,
+>>>>>>>+HEAD
+ createPasync function createPr ({ github, title, body, base, head, owner, repo }) {
+  try {
+    return await githubQueue(() => github.pullRequests.create({
+>>>>>>>-8be4bfc
+y,
       base,
       head,
       owner,
@@ -319,16 +412,154 @@ async function createPr ({ ghqueue, title, body, base, head, owner, repo, log })
     }))
   } catch (err) {
     if (err.code !== 422) throw err
-    const allPrs = await ghqueue.read(github => github.pullRequests.getAll({
-      base,
-      head: owner + ':' + head,
+<<<<<<< HEAD
+    const    const allPrs = await ghqueue.read(github => github.pullRequests.getAll({
+>>>>>>>+HEAD
+rs = awa    const allPrs = await github.pullRequests.getAll({
+>>>>>>>-8be4bfc
+: owner + ':' + head,
       owner,
       repo
+<<<<<<< HEAD
+    }))
+
     }))
 
     if (allPrs.length > 0) {
       log.warn('queue: retry sending pull request to github')
       return allPrs.shift()
     }
+>>>>>>>+HEAD
+ (allPrs.length > 0) return allPrs.shift()
+>>>>>>> 8be4bfc... feat: initial
+  }
+}
+nt({
+    dependencyLink,
+    oldVersionResolved,
+    version,
+    dependency,
+    type,
+    release,
+<<<<<<< HEAD
+    diffC    diffCommits
+  })
+
+  // verify pull requests commit
+  await ghqueue.write(github => github.repos.createStatus({
+>>>>>>>+HEAD
+s,
+    p    diffCommits,
+    plan,
+    isPrivate: repository.private
+  })
+
+  // verify pull requests commit
+  await githubQueue(() => github.repos.createStatus({
+>>>>>>>-8be4bfc
+  repo,
+    state: 'success',
+    context: 'greenkeeper/verify',
+    description: 'Greenkeeper verified pull request',
+    target_url: 'https://greenkeeper.io/verify.html'
+  }))
+<<<<<<< HEAD
+  log.inf  log.info('github: set greenkeeper/verify status')
+
+  const createdPr = await createPr({
+    ghqueue,
+>>>>>>>+HEAD
+edPr = a
+  const createdPr = await createPr({
+    github,
+>>>>>>>-8be4bfc
+   base,
+    head: newBranch,
+    owner,
+<<<<<<< HEAD
+    repo,    repo,
+    log
+  })
+
+  if (createdPr) {
+    log.success('github: pull request created', {pullRequest: createdPr})
+  }
+  if (!createdPr) {
+    log.error('github: pull request was not created')
+    return
+  }
+>>>>>>>+HEAD
+
+  if (!    repo
+  })
+
+  if (!createdPr) return
+>>>>>>>-8be4bfc
+pdate_pullrequests')
+
+  await upsert(repositories, `${repositoryId}:pr:${createdPr.id}`, {
+    type: 'pr',
+    repositoryId,
+    accountId,
+    version,
+    oldVersion,
+    dependency,
+    initial: false,
+    merged: false,
+    number: createdPr.number,
+    state: createdPr.state
+  })
+
+  if (config.label !== false) {
+<<<<<<< HEAD
+    await    await ghqueue.write(github => github.issues.addLabels({
+>>>>>>>+HEAD
+ubQueue(    await githubQueue(() => github.issues.addLabels({
+>>>>>>>-8be4bfc
+r.number,
+      labels: [config.label],
+      owner,
+      repo
+    }))
+  }
+}
+
+<<<<<<< HEAD
+async funasync function createPr ({ ghqueue, title, body, base, head, owner, repo, log }) {
+  try {
+    return await ghqueue.write(github => github.pullRequests.create({
+>>>>>>>+HEAD
+ createPasync function createPr ({ github, title, body, base, head, owner, repo }) {
+  try {
+    return await githubQueue(() => github.pullRequests.create({
+>>>>>>>-8be4bfc
+y,
+      base,
+      head,
+      owner,
+      repo
+    }))
+  } catch (err) {
+    if (err.code !== 422) throw err
+<<<<<<< HEAD
+    const    const allPrs = await ghqueue.read(github => github.pullRequests.getAll({
+>>>>>>>+HEAD
+rs = awa    const allPrs = await github.pullRequests.getAll({
+>>>>>>>-8be4bfc
+: owner + ':' + head,
+      owner,
+      repo
+<<<<<<< HEAD
+    }))
+
+    }))
+
+    if (allPrs.length > 0) {
+      log.warn('queue: retry sending pull request to github')
+      return allPrs.shift()
+    }
+>>>>>>>+HEAD
+ (allPrs.length > 0) return allPrs.shift()
+>>>>>>> 8be4bfc... feat: initial
   }
 }
